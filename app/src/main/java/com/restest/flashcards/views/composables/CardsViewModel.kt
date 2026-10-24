@@ -2,12 +2,9 @@ package com.restest.flashcards.views.composables
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.restest.flashcards.data.model.FlashCard
 import com.restest.flashcards.data.repository.CardsLocalRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class CardsViewModel(
@@ -15,33 +12,25 @@ class CardsViewModel(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) :
     ViewModel() {
-    private val _cardList =
-        MutableStateFlow(listOf<FlashCard>())
-    val cardList = _cardList.asStateFlow()
+    val cardList = repository.cards
+    val isLoading = repository.isLoading
+    val error = repository.error
 
     init {
-        collectRepositoryEvents()
-        getFlashCards()
+        loadCards()
     }
 
-    private fun collectRepositoryEvents() {
+    fun retryLoading() {
+        loadCards()
+    }
+
+    fun deleteCard(cardId: String) {
+        repository.deleteCard(cardId)
+    }
+
+    private fun loadCards() {
         viewModelScope.launch(dispatcher) {
-            repository.events.collect { event ->
-                when (event) {
-                    is CardsLocalRepository.Event.Success -> {
-                        _cardList.value = event.cards
-                    }
-
-                    is CardsLocalRepository.Event.CardAdded -> {}
-
-                    is CardsLocalRepository.Event.Error, CardsLocalRepository.Event.Idle -> {}
-                }
-            }
+            repository.loadCards()
         }
     }
-
-    private fun getFlashCards() {
-        repository.requestCards()
-    }
-
 }
